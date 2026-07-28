@@ -1,15 +1,19 @@
 # syntax=docker/dockerfile:1
 
-FROM node:20-alpine AS base
+FROM node:20-bookworm-slim AS base
 WORKDIR /app
-RUN apk add --no-cache libc6-compat
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
 
 FROM base AS deps
+ENV NODE_ENV=development
+ENV NPM_CONFIG_PRODUCTION=false
 COPY package.json package-lock.json ./
 # Ensure build-time tooling from devDependencies (Tailwind/PostCSS) is installed
 RUN npm ci --include=dev
 
 FROM base AS builder
+ENV NEXT_TELEMETRY_DISABLED=1
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN npm run build
@@ -20,7 +24,7 @@ ENV HOSTNAME=0.0.0.0
 ENV NEXT_TELEMETRY_DISABLED=1
 
 # Security: run as non-root
-RUN addgroup -S nodejs && adduser -S nextjs -G nodejs
+RUN groupadd -r nodejs && useradd -r -g nodejs nextjs
 
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
