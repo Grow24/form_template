@@ -6,7 +6,8 @@ RUN apk add --no-cache libc6-compat
 
 FROM base AS deps
 COPY package.json package-lock.json ./
-RUN npm ci
+# Ensure build-time tooling from devDependencies (Tailwind/PostCSS) is installed
+RUN npm ci --include=dev
 
 FROM base AS builder
 COPY --from=deps /app/node_modules ./node_modules
